@@ -1,55 +1,35 @@
 const express = require("express");
 const {
-  getAllCompanies,
-  createCompany,
-  getCompanyById,
-  getMyCompany,
-  updateCompany,
-  deleteCompany,
-  updateMyCompany,
-} = require("../../controllers/companyController");
+  getHistoricalBills,
+  createBill,
+  updateBillPayment,
+  getBillParams,
+} = require("../../controllers/billController");
 const authenticateToken = require("../../middlewares/auth");
-const {
-  checkSuper,
-  checkAdmin,
-  checkManager,
-  checkSupervisor,
-  checkOperator,
-  checkSales,
-  checkAccounts,
-  checkTechincal,
-  checkRoles,
-} = require("../../middlewares/checkRole");
-const upload = require("../../middlewares/upload");
+const { checkRoles } = require("../../middlewares/checkRole");
+
 const router = express.Router();
 
-router.get(
-  "/",
+// List historical bills for a company (supports page, limit, startDate, endDate)
+// GET /api/v1/bill/:companyId/historical
+router.get("/:companyId/historical", authenticateToken, getHistoricalBills);
+
+// Get distinct parameter keys used in jsonObj for a company's bills
+// GET /api/v1/bill/:companyId/params
+router.get("/:companyId/params", authenticateToken, getBillParams);
+
+// Create a bill for a company. Body must include `jsonObj`.
+// POST /api/v1/bill/:companyId
+router.post("/:companyId", authenticateToken, createBill);
+
+// Update a bill's payment status
+// PATCH /api/v1/bill/:companyId/:billId/payment
+// Restrict to accounts/admin roles for payment updates
+router.patch(
+  "/:companyId/:billId/payment",
   authenticateToken,
-  checkRoles("super", "admin"),
-  getAllCompanies
+  checkRoles("admin", "accounts"),
+  updateBillPayment
 );
-router.get(
-  "/my",
-  authenticateToken,
-  // checkManager,
-  getMyCompany
-);
-router.post("/", upload.single("image"), createCompany);
-
-// authenticateToken, checkAdmin,
-
-router.get("/:companyId", authenticateToken, checkAdmin, getCompanyById);
-
-router.put("/my", authenticateToken, upload.single("image"), updateMyCompany);
-
-router.put(
-  "/:companyId",
-  authenticateToken,
-  upload.single("image"),
-  updateCompany
-);
-
-router.delete("/:companyId", authenticateToken, checkAdmin, deleteCompany);
 
 module.exports = router;
