@@ -1,0 +1,183 @@
+{
+  "info": {
+    "name": "API Bills - Company Scoped",
+    "_postman_id": "bills-collection-1",
+    "description": "Postman collection for company-scoped bills APIs (historical, create, update payment, params)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Bills",
+      "item": [
+        {
+          "name": "List Historical Bills",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bill/{{companyId}}/historical?page=1&limit=25&startDate=2025-01-01&endDate=2025-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bill",
+                "{{companyId}}",
+                "historical"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-12-31"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bill Params (distinct jsonObj keys)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bill/{{companyId}}/params",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bill",
+                "{{companyId}}",
+                "params"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonObj\": {\n    \"meterReading\": 12345,\n    \"units\": 350,\n    \"remarks\": \"July bill\"\n  },\n  \"paymentStatus\": \"pending\",\n  \"amount\": 1200.5,\n  \"meta\": { \"importedFrom\": \"csv\" }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bill/{{companyId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bill",
+                "{{companyId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Bill Payment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentStatus\": \"paid\",\n  \"paid\": true,\n  \"paymentDate\": \"2025-10-31T12:00:00.000Z\",\n  \"amount\": 1200.5,\n  \"meta\": { \"transactionId\": \"txn_123\" }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bill/{{companyId}}/{{billId}}/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bill",
+                "{{companyId}}",
+                "{{billId}}",
+                "payment"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "<YOUR_BEARER_TOKEN>",
+      "type": "string"
+    },
+    {
+      "key": "companyId",
+      "value": "<COMPANY_ID>",
+      "type": "string"
+    },
+    {
+      "key": "billId",
+      "value": "<BILL_ID>",
+      "type": "string"
+    }
+  ]
+}
