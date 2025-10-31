@@ -6,19 +6,16 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const errorHandler = require("./middlewares/errorHandler");
 
-const companyRoutes = require("./routes/v1/company");
+const billRoutes = require("./routes/v1/bill");
 
-// Connect DB + start MQTT
 connectDB();
 
 const app = express();
 
-// Middlewares
 app.set("trust proxy", 1);
 app.use(bodyParser.json());
 app.use(cors());
 
-// Default route
 app.get("/", (req, res) => {
   res.status(200).json({
     message: "Welcome to the API",
@@ -26,23 +23,19 @@ app.get("/", (req, res) => {
   });
 });
 
-// API v1 overview
 app.get("/api/v1/", (req, res) => {
   res.status(200).json({
     message: "Welcome to API v1",
     endpoints: {
-      company: "/api/v1/company",
+      bill: "/api/v1/bill",
     },
   });
 });
 
-// Mount routes
-app.use("/api/v1/company", companyRoutes);
+app.use("/api/v1/bill", billRoutes);
 
-// Error handler
 app.use(errorHandler);
 
-// Start server
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
 app.listen(PORT, HOST, () => {
