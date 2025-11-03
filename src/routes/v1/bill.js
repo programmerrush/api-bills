@@ -4,6 +4,7 @@ const {
   createBill,
   updateBillPayment,
   getBillParams,
+  getBill,
 } = require("../../controllers/billController");
 const authenticateToken = require("../../middlewares/auth");
 const { checkRoles } = require("../../middlewares/checkRole");
@@ -31,5 +32,9 @@ router.patch(
   checkRoles("admin", "accounts"),
   updateBillPayment
 );
+
+// Get a single bill by id
+// GET /api/v1/bill/:companyId/:billId
+router.get("/:companyId/:billId", authenticateToken, getBill);
 
 module.exports = router;

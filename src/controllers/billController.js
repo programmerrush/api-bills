@@ -98,6 +98,24 @@ exports.updateBillPayment = async (req, res) => {
   }
 };
 
+// Get a single bill by company and bill id
+exports.getBill = async (req, res) => {
+  try {
+    const { companyId, billId } = req.params;
+
+    if (!isAuthorizedForCompany(req.user, companyId)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const bill = await Bill.findOne({ _id: billId, company: companyId }).lean();
+    if (!bill) return res.status(404).json({ message: "Bill not found for this company" });
+
+    return res.status(200).json({ bill });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 // Return distinct jsonObj top-level keys used across all historical bills for a company
 exports.getBillParams = async (req, res) => {
   try {
