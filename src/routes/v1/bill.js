@@ -5,6 +5,7 @@ const {
   updateBillPayment,
   getBillParams,
   getBill,
+  deleteBill,
 } = require("../../controllers/billController");
 const authenticateToken = require("../../middlewares/auth");
 const { checkRoles } = require("../../middlewares/checkRole");
@@ -36,5 +37,15 @@ router.patch(
 // Get a single bill by id
 // GET /api/v1/bill/:companyId/:billId
 router.get("/:companyId/:billId", authenticateToken, getBill);
+
+// Delete a bill by id
+// DELETE /api/v1/bill/:companyId/:billId
+// Restrict to admin/accounts
+router.delete(
+  "/:companyId/:billId",
+  authenticateToken,
+  checkRoles("admin", "accounts"),
+  deleteBill
+);
 
 module.exports = router;
