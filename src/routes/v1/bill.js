@@ -5,6 +5,7 @@ const {
   updateBillPayment,
   getBillParams,
   getBill,
+  getBillOpen,
   deleteBill,
 } = require("../../controllers/billController");
 const authenticateToken = require("../../middlewares/auth");
@@ -37,6 +38,10 @@ router.patch(
 // Get a single bill by id
 // GET /api/v1/bill/:companyId/:billId
 router.get("/:companyId/:billId", authenticateToken, getBill);
+
+// Get bill by company and year/month
+// GET /api/v1/bill/open/:companyId/:year/:month
+router.get("/open/:companyId/:year/:month", getBillOpen);
 
 // Delete a bill by id
 // DELETE /api/v1/bill/:companyId/:billId

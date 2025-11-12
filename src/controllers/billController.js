@@ -116,6 +116,47 @@ exports.getBill = async (req, res) => {
   }
 };
 
+// Get bill by companyId and year-month (open bill)
+// Route: GET /api/v1/bill/:companyId/open/:year/:month
+exports.getBillOpen = async (req, res) => {
+  try {
+    const { companyId, year, month } = req.params;
+
+    // if (!isAuthorizedForCompany(req.user, companyId)) {
+    //   return res.status(403).json({ message: "Forbidden" });
+    // }
+
+    const y = parseInt(year, 10);
+    const m = parseInt(month, 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
+      return res.status(400).json({ message: "Invalid year or month" });
+    }
+
+    // Build possible match shapes inside jsonObj or meta
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 1);
+
+    const query = {
+      company: companyId,
+      $or: [
+        { 'jsonObj.year': y, 'jsonObj.month': m },
+        { 'jsonObj.billingPeriod.year': y, 'jsonObj.billingPeriod.month': m },
+        { 'jsonObj.billing_period.year': y, 'jsonObj.billing_period.month': m },
+        { 'meta.year': y, 'meta.month': m },
+        { createdAt: { $gte: start, $lt: end } },
+      ],
+    };
+
+    // Try to find one bill matching the period
+    const bill = await Bill.findOne(query).lean();
+    if (!bill) return res.status(404).json({ message: 'Bill not found for the specified period' });
+
+    return res.status(200).json({ bill });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
 // Delete a bill by company and bill id
 exports.deleteBill = async (req, res) => {
   try {
