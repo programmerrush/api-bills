@@ -31,7 +31,7 @@ router.post("/:companyId", authenticateToken, createBill);
 router.patch(
   "/:companyId/:billId/payment",
   authenticateToken,
-  checkRoles("super_admin", "admin", "accounts"),
+  checkRoles("68f0500fe931769b9f25b1db", "super_admin", "admin", "accounts"),
   updateBillPayment
 );
 
@@ -49,7 +49,7 @@ router.get("/open/:companyId/:year/:month", getBillOpen);
 router.delete(
   "/:companyId/:billId",
   authenticateToken,
-  checkRoles("super_admin", "admin", "accounts"),
+  checkRoles("68f0500fe931769b9f25b1db", "super_admin", "admin", "accounts"),
   deleteBill
 );
 
