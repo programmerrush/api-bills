@@ -56,7 +56,7 @@ router.delete(
 
 // GET case-wise bill details
 router.get(
-  "/bill/:companyId/open/:year/:month/case/:caseId",
+  "/open/:companyId/:year/:month/case/:caseId",
   getBillCaseDetails
 );
 
