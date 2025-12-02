@@ -7,6 +7,7 @@ const {
   getBill,
   getBillOpen,
   deleteBill,
+  getBillCaseDetails
 } = require("../../controllers/billController");
 const authenticateToken = require("../../middlewares/auth");
 const { checkRoles } = require("../../middlewares/checkRole");
@@ -52,5 +53,12 @@ router.delete(
   checkRoles("68f0500fe931769b9f25b1db", "super_admin", "admin", "accounts"),
   deleteBill
 );
+
+// GET case-wise bill details
+router.get(
+  "/bill/:companyId/open/:year/:month/case/:caseId",
+  getBillCaseDetails
+);
+
 
 module.exports = router;
