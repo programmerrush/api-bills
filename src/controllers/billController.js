@@ -243,7 +243,7 @@ exports.getBillCaseDetails = async (req, res) => {
         .json({ message: "Bill not found for the specified period" });
     }
 
-    const j = bill.jsonObj || {};
+    const j = (bill.jsonObj && bill.jsonObj.fields) || {};
     const meta = bill.meta || {};
 
     const toNum = (v) => {
