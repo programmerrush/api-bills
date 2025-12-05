@@ -202,6 +202,7 @@ exports.getBillParams = async (req, res) => {
 // Route: GET /api/v1/bill/:companyId/open/:year/:month/case/:caseId
 const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
+
 exports.getBillCaseDetails = async (req, res) => {
   try {
     const { companyId, year, caseId } = req.params;
@@ -212,8 +213,8 @@ exports.getBillCaseDetails = async (req, res) => {
       return res.status(400).json({ message: "Invalid year" });
     }
 
-    if (![1, 2, 3, 4, 5].includes(c)) {
-      return res.status(400).json({ message: "Invalid caseId. Use 1–5." });
+    if (![1, 2, 3, 4, 5,6].includes(c)) {
+      return res.status(400).json({ message: "Invalid caseId. Use 1–6." });
     }
 
     // Prepare an empty data array for all months
@@ -332,6 +333,18 @@ exports.getBillCaseDetails = async (req, res) => {
             break;
           }
 
+          case 6: { // Total Bill & Consumption (NEW case 6)
+            const total_bill_amount_rounded = toNum(j.total_bill_amount_rounded);
+            const total_consumption_units = toNum(j.total_consumption_units);
+
+            data = {
+              month: MONTH_SHORT[month - 1],
+              total_bill_amount_rounded,
+              total_consumption_units
+            };
+            break;
+          }
+
           default:
             return res.status(400).json({ message: "Invalid caseId" });
         }
@@ -384,6 +397,15 @@ exports.getBillCaseDetails = async (req, res) => {
               tax_rate_psu: null
             };
             break;
+
+          case 6: // Total Bill & Consumption (NEW case 6)
+            data = {
+              month: MONTH_SHORT[month - 1],
+              total_bill_amount_rounded: null,
+              total_consumption_units: null
+            };
+            break;
+          
 
           default:
             return res.status(400).json({ message: "Invalid caseId" });
