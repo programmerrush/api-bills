@@ -200,183 +200,207 @@ exports.getBillParams = async (req, res) => {
 
 // Get partial / computed bill details by caseId (1–5)
 // Route: GET /api/v1/bill/:companyId/open/:year/:month/case/:caseId
+const MONTH_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
 exports.getBillCaseDetails = async (req, res) => {
   try {
-    const { companyId, year, month, caseId } = req.params;
-
-    // Enable auth if needed
-    // if (!isAuthorizedForCompany(req.user, companyId)) {
-    //   return res.status(403).json({ message: "Forbidden" });
-    // }
-
+    const { companyId, year, caseId } = req.params;
     const y = parseInt(year, 10);
-    const m = parseInt(month, 10);
     const c = parseInt(caseId, 10);
 
-    if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
-      return res.status(400).json({ message: "Invalid year or month" });
+    if (!Number.isFinite(y)) {
+      return res.status(400).json({ message: "Invalid year" });
     }
 
     if (![1, 2, 3, 4, 5].includes(c)) {
       return res.status(400).json({ message: "Invalid caseId. Use 1–5." });
     }
 
-    // Same logic as getBillOpen
-    const start = new Date(y, m - 1, 1);
-    const end = new Date(y, m, 1);
+    // Prepare an empty data array for all months
+    const monthsData = [];
+    for (let month = 1; month <= 12; month++) {
+      const start = new Date(y, month - 1, 1); // Start date for the month
+      const end = new Date(y, month, 1); // End date for the month
 
-    const query = {
-      company: companyId,
-      $or: [
-        { "jsonObj.year": y, "jsonObj.month": m },
-        { "jsonObj.billingPeriod.year": y, "jsonObj.billingPeriod.month": m },
-        { "jsonObj.billing_period.year": y, "jsonObj.billing_period.month": m },
-        { "meta.year": y, "meta.month": m },
-        { createdAt: { $gte: start, $lt: end } }
-      ]
-    };
+      // Query to fetch data for the given month
+      const query = {
+        company: companyId,
+        $or: [
+          { "jsonObj.year": y, "jsonObj.month": month },
+          { "jsonObj.billingPeriod.year": y, "jsonObj.billingPeriod.month": month },
+          { "jsonObj.billing_period.year": y, "jsonObj.billing_period.month": month },
+          { "meta.year": y, "meta.month": month },
+          { createdAt: { $gte: start, $lt: end } }
+        ]
+      };
 
-    const bill = await Bill.findOne(query).lean();
-    if (!bill) {
-      return res
-        .status(404)
-        .json({ message: "Bill not found for the specified period" });
-    }
+      const bill = await Bill.findOne(query).lean();
 
-    const j = (bill.jsonObj && bill.jsonObj.fields) || {};
-    const meta = bill.meta || {};
+      // Add month data based on the caseId
+      let data = { month: MONTH_SHORT[month - 1] }; // Use short month name (JAN, FEB, etc.)
 
-    const toNum = (v) => {
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : null;
-    };
+      if (bill) {
+        const j = bill.jsonObj?.fields || {};
 
-    let data;
-
-    switch (c) {
-      // case 1 = pf
-      // parameters = billed_pf
-      case 1: {
-        const billed_pf = toNum(j.billed_pf);
-        data = { billed_pf };
-        break;
-      }
-
-      // case 2 = consumption trend
-      // parameters = energy_charges divided by consumption_rate
-      // here: consumption_rate = total_consumption_rate_per_units
-      case 2: {
-        const energy_charges = toNum(j.energy_charges);
-        const consumption_rate = toNum(j.total_consumption_rate_per_units);
-        const total_units = toNum(j.total_consumption_units);
-
-        const derived_units =
-          energy_charges != null && consumption_rate && consumption_rate !== 0
-            ? energy_charges / consumption_rate
-            : null;
-
-        data = {
-          energy_charges,
-          consumption_rate,    // total_consumption_rate_per_units
-          total_units,         // total_consumption_units (raw from bill)
-          derived_units        // energy_charges / rate  (kWh approx.)
+        const toNum = (v) => {
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? n : null;
         };
-        break;
+
+        switch (c) {
+          case 1: { // Power Factor (case 1)
+            const billed_pf = toNum(j.billed_pf);
+            data = { month: MONTH_SHORT[month - 1], billed_pf: billed_pf != null ? billed_pf : null };
+            break;
+          }
+
+          case 2: { // Consumption Trend (case 2)
+            const energy_charges = toNum(j.energy_charges);
+            const consumption_rate = toNum(j.total_consumption_rate_per_units);
+            const total_units = toNum(j.total_consumption_units);
+            const derived_units =
+              energy_charges != null && consumption_rate && consumption_rate !== 0
+                ? energy_charges / consumption_rate
+                : null;
+
+            data = {
+              month: MONTH_SHORT[month - 1],
+              energy_charges,
+              consumption_rate,
+              total_units,
+              derived_units
+            };
+            break;
+          }
+
+          case 3: { // Incentives (case 3)
+            const bcr = toNum(j.bulk_consumption_rebate);
+            const icr = toNum(j.incremental_consumption_rebate);
+            const excess_demand = toNum(j.charges_for_excess_demand);
+            const total_amount =
+              toNum(j.total_bill_amount_rounded) ?? toNum(j.total_current_bill);
+
+            data = {
+              month: MONTH_SHORT[month - 1],
+              bcr,
+              icr,
+              excess_demand,
+              total_amount
+            };
+            break;
+          }
+
+          case 4: { // Demand Details (case 4)
+            const contract_demand = toNum(j.contract_demand_kva);
+            const recorded_demand = toNum(j.recorder_max_demand);
+            const billed_demand = toNum(j.billed_demand_kva);
+            const seventy_five_contract_demand = toNum(j.demand_75pct_kva);
+
+            data = {
+              month: MONTH_SHORT[month - 1],
+              contract_demand,
+              recorded_demand,
+              billed_demand,
+              seventy_five_contract_demand
+            };
+            break;
+          }
+
+          case 5: { // Bill Components (case 5)
+            const energy_charges = toNum(j.energy_charges);
+            const wheeling_charges = toNum(j.wheeling_charge);
+            const demand_charges = toNum(j.demand_charges);
+            const electricity_duty = toNum(j.electricity_duty);
+            const total_units = toNum(j.total_consumption_units);
+            const tax_rate_psu = toNum(j.tax_on_sale_rate_psu);
+
+            const tax_on_sale =
+              total_units != null && tax_rate_psu != null
+                ? (total_units * tax_rate_psu) / 100 // convert paise to ₹
+                : null;
+
+            data = {
+              month: MONTH_SHORT[month - 1],
+              energy_charges,
+              wheeling_charges,
+              demand_charges,
+              electricity_duty,
+              tax_on_sale,
+              total_units,
+              tax_rate_psu
+            };
+            break;
+          }
+
+          default:
+            return res.status(400).json({ message: "Invalid caseId" });
+        }
+      } else {
+        // If no data found for that month, return null values for the relevant caseId
+        switch (c) {
+          case 1: // Power Factor (case 1)
+            data = { month: MONTH_SHORT[month - 1], billed_pf: null };
+            break;
+
+          case 2: // Consumption Trend (case 2)
+            data = {
+              month: MONTH_SHORT[month - 1],
+              energy_charges: null,
+              consumption_rate: null,
+              total_units: null,
+              derived_units: null
+            };
+            break;
+
+          case 3: // Incentives (case 3)
+            data = {
+              month: MONTH_SHORT[month - 1],
+              bcr: null,
+              icr: null,
+              excess_demand: null,
+              total_amount: null
+            };
+            break;
+
+          case 4: // Demand Details (case 4)
+            data = {
+              month: MONTH_SHORT[month - 1],
+              contract_demand: null,
+              recorded_demand: null,
+              billed_demand: null,
+              seventy_five_contract_demand: null
+            };
+            break;
+
+          case 5: // Bill Components (case 5)
+            data = {
+              month: MONTH_SHORT[month - 1],
+              energy_charges: null,
+              wheeling_charges: null,
+              demand_charges: null,
+              electricity_duty: null,
+              tax_on_sale: null,
+              total_units: null,
+              tax_rate_psu: null
+            };
+            break;
+
+          default:
+            return res.status(400).json({ message: "Invalid caseId" });
+        }
       }
 
-      // case 3 = incentives
-      // parameters = bcr,icr,excess_demand,total_amount
-      // mapping:
-      //  bcr  -> bulk_consumption_rebate
-      //  icr  -> incremental_consumption_rebate
-      //  excess_demand -> charges_for_excess_demand
-      //  total_amount  -> total_bill_amount_rounded
-      case 3: {
-        const bcr = toNum(j.bulk_consumption_rebate);
-        const icr = toNum(j.incremental_consumption_rebate);
-        const excess_demand = toNum(j.charges_for_excess_demand);
-        const total_amount =
-          toNum(j.total_bill_amount_rounded) ??
-          toNum(j.total_current_bill);
-
-        data = {
-          bcr,
-          icr,
-          excess_demand,
-          total_amount
-        };
-        break;
-      }
-
-      // case 4 = demand details
-      // parameters = contract_demand, recorded_demand, billed_demand, 75_contract_demand
-      // mapping:
-      //  contract_demand      -> contract_demand_kva
-      //  recorded_demand      -> recorder_max_demand
-      //  billed_demand        -> billed_demand_kva
-      //  75_contract_demand   -> demand_75pct_kva
-      case 4: {
-        const contract_demand = toNum(j.contract_demand_kva);
-        const recorded_demand = toNum(j.recorder_max_demand);
-        const billed_demand = toNum(j.billed_demand_kva);
-        const seventy_five_contract_demand = toNum(j.demand_75pct_kva);
-
-        data = {
-          contract_demand,
-          recorded_demand,
-          billed_demand,
-          seventy_five_contract_demand
-        };
-        break;
-      }
-
-      // case 5 = bill components
-      // parameters = energy_charges,wheeling_charges,demand_charges,electricity_duty,tax_on_sale
-      // mapping:
-      //  wheeling_charges  -> wheeling_charge
-      //  tax_on_sale       -> computed from total_consumption_units & tax_on_sale_rate_psu
-      case 5: {
-        const energy_charges = toNum(j.energy_charges);
-        const wheeling_charges = toNum(j.wheeling_charge);
-        const demand_charges = toNum(j.demand_charges);
-        const electricity_duty = toNum(j.electricity_duty);
-
-        const total_units = toNum(j.total_consumption_units);
-        const tax_rate_psu = toNum(j.tax_on_sale_rate_psu);
-
-        // tax_on_sale_rate_psu = paise per unit → convert to ₹:
-        const tax_on_sale =
-          total_units != null && tax_rate_psu != null
-            ? (total_units * tax_rate_psu) / 100 // divide by 100 to go paise → ₹
-            : null;
-
-        data = {
-          energy_charges,
-          wheeling_charges,
-          demand_charges,
-          electricity_duty,
-          tax_on_sale,
-          // extra context if you need on FE:
-          total_units,
-          tax_rate_psu
-        };
-        break;
-      }
-
-      default:
-        return res.status(400).json({ message: "Invalid caseId" });
+      monthsData.push(data); // Add the data for the current month
     }
 
     return res.status(200).json({
       companyId,
       year: y,
-      month: m,
       caseId: c,
-      data
+      data: monthsData
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
