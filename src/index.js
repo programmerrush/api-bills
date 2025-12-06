@@ -34,6 +34,14 @@ app.get("/api/v1/", (req, res) => {
 
 app.use("/api/v1/bill", billRoutes);
 
+app.get("/build", (req, res) => {
+  res.json({
+    service: "company",
+    build_epoch: process.env.BUILD_EPOCH || null,
+    // build_date: new Date(process.env.BUILD_EPOCH * 1000).toISOString(),
+  });
+});
+
 app.use(errorHandler);
 
 const PORT = process.env.PORT;
