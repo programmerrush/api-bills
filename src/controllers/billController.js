@@ -132,19 +132,30 @@ exports.getBillOpen = async (req, res) => {
       return res.status(400).json({ message: "Invalid year or month" });
     }
 
-    // Build possible match shapes inside jsonObj or meta
-    const start = new Date(y, m - 1, 1);
-    const end = new Date(y, m, 1);
-
+    // FIXED: Look for bill_month and bill_year in various locations within the bill data
     const query = {
       company: companyId,
       $or: [
+        // Check in jsonObj fields
+        { 'jsonObj.bill_year': y, 'jsonObj.bill_month': m },
         { 'jsonObj.year': y, 'jsonObj.month': m },
+        
+        // Also check in jsonObj.fields if that's where your data is stored
+        { 'jsonObj.fields.bill_year': y, 'jsonObj.fields.bill_month': m },
+        { 'jsonObj.fields.year': y, 'jsonObj.fields.month': m },
+        
+        // Check in billingPeriod object
         { 'jsonObj.billingPeriod.year': y, 'jsonObj.billingPeriod.month': m },
         { 'jsonObj.billing_period.year': y, 'jsonObj.billing_period.month': m },
-        { 'meta.year': y, 'meta.month': m },
-        { createdAt: { $gte: start, $lt: end } },
-      ],
+        
+        // Alternative field names
+        { 'jsonObj.billing_year': y, 'jsonObj.billing_month': m },
+        { 'jsonObj.period_year': y, 'jsonObj.period_month': m },
+        
+        // Check in meta field
+        { 'meta.bill_year': y, 'meta.bill_month': m },
+        { 'meta.year': y, 'meta.month': m }
+      ]
     };
 
     // Try to find one bill matching the period
@@ -425,3 +436,4 @@ exports.getBillCaseDetails = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
